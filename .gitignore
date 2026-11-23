@@ -1,0 +1,5 @@
+build/
+.env
+*.o
+*.log
+compile_commands.json

@@ -21,8 +21,11 @@ target_include_directories(llmcore PUBLIC include)
 target_link_libraries(llmcore PUBLIC CURL::libcurl)
 if (nlohmann_json_FOUND)
     target_link_libraries(llmcore PUBLIC nlohmann_json::nlohmann_json)
-else()
+elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/nlohmann/json.hpp)
+    # 可选：单头模式，把 json.hpp 放这里就不用装 apt 包
     target_include_directories(llmcore PUBLIC third_party)
+else()
+    message(FATAL_ERROR "缺少 nlohmann/json：sudo apt install nlohmann-json3-dev")
 endif()
 
 add_executable(llmchat examples/cli_chat.cpp)

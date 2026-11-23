@@ -7,9 +7,15 @@ C++17 大模型接入 SDK（W1）。不用任何官方 SDK，只用 libcurl 自�
 
 D1 骨架：只有统一 IR 的三个头文件与 6 个占位翻译单元，**还没有任何可用功能**。
 
+## 文档
+
+- [sdk-notes/说明书.md](sdk-notes/说明书.md) —— 接口契约、实现红线、验收标准（先读这个）
+- [sdk-notes/W1-实施计划.md](sdk-notes/W1-实施计划.md) —— D1~D5 每天做什么、每步多久
+- [NOTES.md](NOTES.md) —— 每日进度与踩坑
+
 ## 编译
 
     cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
     cmake --build build -j
 
-完整说明（用法 / 目录 / 验收）在 D5 补齐。
+完整用法 / 目录 / 验收见上面的说明书。

@@ -5,7 +5,7 @@ C++17 大模型接入 SDK（W1）。不用任何官方 SDK，只用 libcurl 自�
 
 ## 当前状态
 
-D1 骨架：只有统一 IR 的三个头文件与 6 个占位翻译单元，**还没有任何可用功能**。
+D2：HTTP 层已完成（`HttpClient::post` / `post_stream`，含取消与超时，`curl` 六项必设齐全）。**还没有对话功能**——SSE 解析器（D3）、provider 与真正的 CLI（D4）尚未实现，目前只能用 `./build/llmchat --http-smoke*` 这组临时冒烟命令验证 HTTP 层。
 
 ## 文档
 

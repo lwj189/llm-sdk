@@ -3,6 +3,7 @@
 
 namespace llm {
 
+// 取消标记定义
 class CancelToken {
 public:
     // 与说明书的差异：cancel()/cancelled() 在类内直接定义（inline），因为目录结构里

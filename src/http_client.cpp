@@ -70,10 +70,15 @@ bool perform(const HttpRequest& req, const HttpClient::ByteSink* sink,
         headers = curl_slist_append(headers, header.c_str());
     }
 
-    // —— 六项必设（说明书 §7.1，计划 §3.2 逐条打勾）——
-    curl_easy_setopt(handle, CURLOPT_NOSIGNAL, 1L);                        // 1 多线程下不用 alarm 做 DNS 超时
-    curl_easy_setopt(handle, CURLOPT_HTTP_VERSION,
-                     static_cast<long>(CURL_HTTP_VERSION_1_1));           // 2 SSE 只在 HTTP/1.1 上验证过
+    // —— 六项必设（说明书 §7.1）——
+    // 1 NOSIGNAL：多线程下不用 alarm 做 DNS 超时，避免信号打断别的线程
+    // 2 HTTP_VERSION：强制 1.1，SSE 只在 HTTP/1.1 验证过
+    // 3 WRITEFUNCTION + WRITEDATA：写回调 + userdata
+    // 4 NOPROGRESS=0 + XFERINFO*：进度回调 + userdata（反直觉：0L 才是启用）
+    // 5 CONNECTTIMEOUT_MS + TIMEOUT_MS：连接超时 / 总超时（毫秒版）
+    // 6 TCP_KEEPALIVE：长连接保活
+    curl_easy_setopt(handle, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(handle, CURLOPT_HTTP_VERSION, static_cast<long>(CURL_HTTP_VERSION_1_1));
     curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, &on_write);           // 3 静态函数 + userdata
     curl_easy_setopt(handle, CURLOPT_WRITEDATA, &st);
     curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);                     // 4 不设 0L，进度回调永不触发
@@ -83,17 +88,20 @@ bool perform(const HttpRequest& req, const HttpClient::ByteSink* sink,
     curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, req.total_timeout_ms);
     curl_easy_setopt(handle, CURLOPT_TCP_KEEPALIVE, 1L);                  // 6 长连接保活
 
-    // —— 请求本身 ——
+    // —— 请求本身：POST 标准配置 ——
+    // 发给谁（URL）、带什么头（HTTPHEADER）、发什么（POST + POSTFIELDS + SIZE）
+    // setopt 可变参数要求 long，size() 返回 size_t，需显式转换
     curl_easy_setopt(handle, CURLOPT_URL, req.url.c_str());
     if (headers != nullptr) {
         curl_easy_setopt(handle, CURLOPT_HTTPHEADER, headers);
     }
     curl_easy_setopt(handle, CURLOPT_POST, 1L);
     curl_easy_setopt(handle, CURLOPT_POSTFIELDS, req.body.c_str());
-    curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE,
-                     static_cast<long>(req.body.size()));
+    curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE,static_cast<long>(req.body.size()));
 
-    // 低速放弃：req 里给的字段，0 = 不启用（说明书 §6.3）。
+    // —— 低速放弃（说明书 §7.1）——
+    // 连续 low_speed_time_s 秒速度都低于 low_speed_limit 字节/秒就放弃
+    // setopt 要求 long，不能用 size_t
     curl_easy_setopt(handle, CURLOPT_LOW_SPEED_LIMIT, req.low_speed_limit);
     curl_easy_setopt(handle, CURLOPT_LOW_SPEED_TIME, req.low_speed_time_s);
 

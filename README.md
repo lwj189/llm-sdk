@@ -5,7 +5,7 @@ C++17 大模型接入 SDK（W1）。不用任何官方 SDK，只用 libcurl 自�
 
 ## 当前状态
 
-D2：HTTP 层已完成（`HttpClient::post` / `post_stream`，含取消与超时，`curl` 六项必设齐全）。**还没有对话功能**——SSE 解析器（D3）、provider 与真正的 CLI（D4）尚未实现，目前只能用 `./build/llmchat --http-smoke*` 这组临时冒烟命令验证 HTTP 层。
+D3（进行中）：SSE 解析器主体已完成（`include/llm/sse.hpp` / `src/sse.cpp`，覆盖跨块 CRLF、注释、多行 `data`、`finish` 幂等），4 个用例在手写夹具上全过。**还差最后一步**：机器上没有 `DEEPSEEK_API_KEY`，真实夹具 `tests/fixtures/deepseek_stream.sse` 还没录；按 D-09，真实流量重跑通过才算 D3 完成。provider 与真正的 CLI（D4）尚未实现，目前仍只能用 `./build/llmchat --http-smoke*` 验证 HTTP 层。
 
 ## 文档
 

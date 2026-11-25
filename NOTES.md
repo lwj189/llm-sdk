@@ -64,3 +64,30 @@ real	0m0.009s
 G. key 扫描
 grep -rnE "sk-[A-Za-z0-9_-]{16,}" → 0 命中
 ```
+
+## D3（2026-11-25）
+
+- 做了什么：`include/llm/sse.hpp` + `src/sse.cpp` 实现 SSE 解析器——`feed` 行扫描、半行/半事件挂起、跨块 CRLF、`:` 注释、多行 `data`、`finish` 幂等；`tests/test_sse.cpp` 四个用例（整读 / 逐字节重放 / 混合边界 / 残行 finish）；新增手写夹具 `tests/fixtures/handwritten_stream.sse`。clean build 0 警告，`ctest` 1/1，`./build/llm_tests` 四例全 PASS；Release（`NDEBUG`）构建也同样 0 警告、`ctest` 1/1、四例 PASS（自定义 CHECK 不会被编掉）。
+- 卡在哪：机器上仍然没有 `DEEPSEEK_API_KEY`，真实夹具 `tests/fixtures/deepseek_stream.sse` 还没录。按 D-09，手写夹具只能证明解析器逻辑，不能证明真实流量；D3 暂记 🟡，不标 ✅。
+- 明天第一件事：拿到 key 后按说明书 §8.1 录真实夹具 → 重跑 `ctest` 与 `./build/llm_tests`，通过后把 D3 改成 ✅；然后进 D4（provider + 流式 CLI）。
+
+### D3 验收（2026-11-25 原始输出，clean build）
+
+```text
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug   → exit=0
+cmake --build build -j                          → exit=0，warning: 0，error: 0
+ctest --test-dir build --output-on-failure      → 100% tests passed, 1/1
+
+./build/llm_tests                               → exit=0
+=== D3 SSE parser tests ===
+fixture: /home/aaa/桌面/sdk/tests/fixtures/handwritten_stream.sse  (handwritten; real fixture pending key)
+[case 1] whole fixture
+[case 2] byte-by-byte replay
+[case 3] mixed boundaries
+[case 4] finish residual
+
+ALL PASS
+
+git grep -nE 'sk-[A-Za-z0-9_-]{16,}'            → 0 命中
+ls tests/fixtures                               → handwritten_stream.sse；deepseek_stream.sse 仍不存在（待 key）
+```

@@ -93,3 +93,40 @@ ALL PASS
 git grep -nE 'sk-[A-Za-z0-9_-]{16,}'            → 0 命中
 ls tests/fixtures                               → deepseek_stream.sse（真实，32494 字节）、handwritten_stream.sse（手写回退）
 ```
+
+## D4（2026-11-26）
+
+- 做了什么：新增 `include/llm/provider.hpp`（`LLMProvider` + 模板方法式 `OpenAICompatProvider`）与 `include/llm/deepseek.hpp`；填满 `src/providers/openai_compat.cpp` 的 `endpoint` / `apiKey` / `isAvailable` / `buildBody` / `chat` / `chatStream` / `parseChunk` / `parseErrorBody`；`src/providers/deepseek.cpp` 填 DeepSeek 默认值；`examples/cli_chat.cpp` 改成真正的流式 CLI（逐字打印、reasoning 打到 stderr、usage、SIGINT → `CancelToken`、退出码 130），按 D-01 删除全部 `--http-smoke*`。
+- 卡在哪：手上这把 DeepSeek key 已失效（真实请求 401 `Authentication Fails ... is invalid`），所以真实 200 还没验；本地 mock 的流式 / 非流式 / 401 / 取消四条已全 PASS，真实 401 也验过。拿到新 key 后补跑 `./build/llmchat "用三句话解释 epoll"` 与 Ctrl-C 两条，D4 才算完整。
+- 明天第一件事：D5 收口；先补 D4 的真实 200，再按说明书 §9 六条验收 + 四问自测，最后 `docs:` commit。
+
+### D4 验收（2026-11-26 原始输出，clean build；本地部分）
+
+```text
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug   → exit=0
+cmake --build build -j                          → exit=0，warning: 0，error: 0
+ctest --test-dir build --output-on-failure      → 100% tests passed, 1/1
+
+./build/llmchat                                 → usage，exit=0
+./build/llmchat "hi"（无 key）                  → exit=1
+  [错误] 环境变量 DEEPSEEK_API_KEY 未设置
+
+DEEPSEEK_API_KEY=invalid ./build/llmchat "hi"   → exit=1
+  [错误] 请求失败（HTTP 401） code=invalid_request_error: Authentication Fails, Your api key: **** is invalid
+  [耗时] 469 ms
+
+本地 mock（/tmp/mock_deepseek.py，127.0.0.1:18080）：
+  nonstream ok=1 content=你好，世界 usage=3/4/7
+  stream ok=1 chunks=117 done=1 usage=1 len=459 text_head=1. epoll 是 Linux ...
+  401 ok=0 len=0
+  401-chat ok=0
+  sink-false ok=0 chunks=1 cancelled=1
+  cancel ok=0 chunks=2 cancelled=1 elapsed_ms=200
+  ALL PASS
+
+临时 CLI 指向本地 mock：
+  /slow 上 0.5s 时 Ctrl-C → rc=130，约 500ms 回到 shell，stdout "012"，stderr "[错误] 请求失败: 请求已取消"
+  /fast 上 rc=0，stderr "[usage] prompt=10 completion=115 total=125"、"[done] 5455 ms"
+
+git grep -nE 'sk-[A-Za-z0-9_-]{16,}'            → 0 命中
+```

@@ -1,2 +1,9 @@
-// D1 占位翻译单元：DeepSeek 只填默认值（base_url / key 环境变量名 / 默认模型），D4 实现。
-namespace llm {}
+#include "llm/deepseek.hpp"
+
+namespace llm {
+
+DeepSeekProvider::DeepSeekProvider()
+    : OpenAICompatProvider("deepseek", "https://api.deepseek.com",
+                           "DEEPSEEK_API_KEY", "deepseek-chat") {}
+
+}  // namespace llm

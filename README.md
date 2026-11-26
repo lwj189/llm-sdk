@@ -5,7 +5,7 @@ C++17 大模型接入 SDK（W1）。不用任何官方 SDK，只用 libcurl 自�
 
 ## 当前状态
 
-D3 完成：SSE 解析器（`include/llm/sse.hpp` / `src/sse.cpp`，覆盖跨块 CRLF、注释、多行 `data`、`finish` 幂等），真实夹具 `tests/fixtures/deepseek_stream.sse` 已录并重跑通过（117 条 JSON chunk + `[DONE]`），4 个用例全过，clean build 0 警告、`ctest` 1/1。provider 与真正的 CLI（D4）尚未实现，目前仍只能用 `./build/llmchat --http-smoke*` 验证 HTTP 层。
+D4 代码与本地验收完成：`DeepSeekProvider`（`include/llm/deepseek.hpp`）+ OpenAI 兼容 provider（`include/llm/provider.hpp` / `src/providers/openai_compat.cpp`）已实现，`./build/llmchat "问题"` 可逐字流式输出，Ctrl-C 取消；`[DONE]` 早停、HTTP 错误体、非流式 `chat()` 都覆盖；D2 的 `--http-smoke*` 已按 D-01 删除。clean build 0 警告、`ctest` 1/1；本地 mock 的流式 / 非流式 / 401 / 取消全 PASS，真实 401 也已验。**真实 200 尚未验**：手上 key 已失效（401），拿到新 key 后补跑，D4 才算完整。D5 收口待做。
 
 ## 文档
 

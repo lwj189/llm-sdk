@@ -15,7 +15,7 @@ W1 已完成（D1–D5）。同一套 `LLMProvider` / `OpenAICompatProvider` 已
 
 三家真实 API 已在 2026-11-28 验到 HTTP 200，逐字流式、usage、Ctrl-C 取消都通过；
 clean build 0 警告、`ctest` 1/1、SSE 真实夹具 4 用例 ALL PASS。完整原始输出见
-[sdk-notes/W1-验收报告.md](sdk-notes/W1-验收报告.md)。
+[NOTES.md](NOTES.md) 的 §15「验收报告」。
 
 ## 用法
 
@@ -39,7 +39,7 @@ GLM 也接受 `ZHIPUAI_API_KEY`，千问也接受 `QWEN_API_KEY` 作为回退。
     src/             HTTP 客户端、SSE 解析器、OpenAI 兼容 provider 与三家默认值
     examples/        流式 CLI（逐字输出、usage、SIGINT 取消）
     tests/           SSE 四用例、真实与手写夹具
-    sdk-notes/       说明书、W1 实施计划、验收报告、项目现状
+    NOTES.md         单文件项目笔记：说明 / 计划 / 日志 / 验收
 
 ## 设计三句话
 
@@ -53,11 +53,8 @@ GLM 也接受 `ZHIPUAI_API_KEY`，千问也接受 `QWEN_API_KEY` 作为回退。
 
 ## 文档
 
-- [sdk-notes/W1-验收报告.md](sdk-notes/W1-验收报告.md) —— 三家真实 200、流式、取消与六条验收证据
-- [sdk-notes/如何了解项目现状.md](sdk-notes/如何了解项目现状.md) —— 隔几天回来先看这个：5 分钟搞清做到哪
-- [sdk-notes/说明书.md](sdk-notes/说明书.md) —— 接口契约、实现红线、验收标准（先读这个）
-- [sdk-notes/W1-实施计划.md](sdk-notes/W1-实施计划.md) —— D1~D5 每天做什么、每步多久
-- [NOTES.md](NOTES.md) —— 每日进度与踩坑
+- [NOTES.md](NOTES.md) —— 单文件项目笔记：项目说明、接口契约、实施计划、开发日志、验收报告全在这里；隔几天回来先看 §0
+- [README.md](README.md) —— 本文件：对外简介、用法、目录、设计三句话
 
 ## 编译
 

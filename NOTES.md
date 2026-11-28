@@ -159,3 +159,69 @@ ctest --test-dir build --output-on-failure      → 100% tests passed, 1/1
 
 git grep -nE 'sk-[A-Za-z0-9_-]{16,}'            → 0 命中
 ```
+
+> 2026-11-28 更新：上面 D4 / D4 扩展里的 401 是当时的历史记录；真实 200 已在本节之后验证，D4 已收口。
+
+## D4 收口：三家真实 200（2026-11-28）
+
+- 做了什么：用用户提供的有效 key，把 GLM / 千问 / DeepSeek 三家真实 API 都跑通；同一段提示词下三家均返回 HTTP 200、逐字输出并通过 usage；Ctrl-C 三家都在 1 秒内退出（2 / 6 / 15 ms，rc=130）。D4 从 🟡 改为 ✅。
+- 卡在哪：无。
+- 明天第一件事：D5 收口；按说明书 §9 跑六条验收、四问自测，更新 README / NOTES / 计划 / 现状文档，最后 docs commit。
+
+### D4 收口验收（2026-11-28 原始输出）
+
+```text
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug   → exit=0
+cmake --build build -j                          → exit=0，warning: 0，error: 0
+ctest --test-dir build --output-on-failure      → 100% tests passed, 1/1
+./build/llm_tests                               → fixture recorded，[case 1]~[case 4] ALL PASS
+
+./build/llmchat --provider glm "用一句话解释 epoll"
+  [provider] glm
+  epoll 是一种高效的 I/O 多路复用机制……
+  [usage] prompt=9 completion=32 total=41
+  [done] 1946 ms
+
+./build/llmchat --provider qwen "用一句话解释 epoll"
+  [provider] qwen
+  epoll 是 Linux 内核提供的一种高效 I/O 事件通知机制……
+  [usage] prompt=12 completion=82 total=94
+  [done] 2420 ms
+
+./build/llmchat --provider deepseek "用一句话解释 epoll"
+  [provider] deepseek
+  epoll 是 Linux 内核提供的一种 I/O 多路复用机制……
+  [usage] prompt=9 completion=52 total=61
+  [done] 851 ms
+
+显式 HTTP 状态（非流式，只回复 OK）：
+  glm:      http=200 model=glm-4-flash    content='OK'
+  qwen:     http=200 model=qwen-plus      content='OK'
+  deepseek: http=200 model=deepseek-flash content='OK'
+
+Ctrl-C（长提示词，启动 0.7s 后发 SIGINT）：
+  glm:      2 ms，rc=130，取消前输出 8 字符
+  qwen:     6 ms，rc=130，取消前输出 0 字符
+  deepseek: 15 ms，rc=130，取消前输出 69 字符
+
+key 扫描：git grep -nE 'sk-[A-Za-z0-9_.-]{16,}|[0-9a-f]{32}\.[A-Za-z0-9]{16}' → 无匹配
+```
+
+## D5（2026-11-28）
+
+- 做了什么：警告复查、README 补编译/用法/目录/设计三句话、NOTES 补 D4 收口与 D5、说明书 §9 六条验收与四问自测、计划看板与现状文档同步；新增 `sdk-notes/W1-验收报告.md` 汇总真实 200、流式、取消和适配差异证据。
+- 卡在哪：无。
+- 明天第一件事：无，W1 收口；准备现场演示（见 `sdk-notes/W1-验收报告.md` 第 7 节）。
+
+### D5 验收（2026-11-28 原始输出）
+
+```text
+1. 零警告：configure_rc=0，build_rc=0，warnings=0，errors=0
+2. 测试：100% tests passed, 0 tests failed out of 1
+   ./build/llm_tests：fixture recorded，[case 1]~[case 4] ALL PASS
+3. 流式：GLM / Qwen / DeepSeek 三家真实 200；单次实测首 chunk 594 / 568 / 520 ms，
+   chunk 数 78 / 38 / 94，usage 正常（详见 W1-验收报告.md）
+4. Ctrl-C：SIGINT 后 2 / 6 / 15 ms 退出，rc=130
+5. key 扫描：扩展正则无匹配，scan_exit=1
+6. 提交数：验收时 15（≥4）；本次 docs 提交后 16
+```

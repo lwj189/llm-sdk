@@ -130,3 +130,32 @@ DEEPSEEK_API_KEY=invalid ./build/llmchat "hi"   → exit=1
 
 git grep -nE 'sk-[A-Za-z0-9_-]{16,}'            → 0 命中
 ```
+
+## D4 扩展：GLM / 千问 provider（2026-11-28）
+
+- 做了什么：新增 include/llm/glm.hpp、include/llm/qwen.hpp 与 src/providers/glm.cpp、src/providers/qwen.cpp；OpenAICompatProvider 增加 usageOptionKey() 钩子（默认 include_usage，GLM 覆盖为 chunk_include_usage）；CLI 增加 --provider glm|qwen|deepseek 与 --model，默认 glm，保留 DeepSeek；GLM key 回退 ZHIPUAI_API_KEY，千问回退 QWEN_API_KEY；可选 GLM_BASE_URL / QWEN_BASE_URL 便于本地 mock。
+- 卡在哪：GLM key 真实请求返回 HTTP 401「身份验证失败」（标准端点与 coding 端点、glm-4-flash / glm-4.6 / glm-4.5 都试过，均为 401）；千问没有 key；DeepSeek 旧 key 也失效。真实 200 仍未验，D4 保持 🟡。
+- 明天第一件事：拿到有效 GLM 或千问 key 后，先跑真实 200 与 Ctrl-C 两条；再补 D4 DeepSeek 200 和 D5。
+
+### D4 扩展验收（2026-11-28 原始输出）
+
+```text
+cmake --build build -j                          → exit=0，warning: 0，error: 0
+ctest --test-dir build --output-on-failure      → 100% tests passed, 1/1
+
+本地 mock（127.0.0.1:18081）：
+  glm_rc=0  stdout="你好，世界"
+    stderr=[provider] glm / [usage] prompt=3 completion=2 total=5 / [done] 3 ms
+  qwen_rc=0 stdout="你好，世界"
+    stderr=[provider] qwen / [usage] prompt=3 completion=2 total=5 / [done] 1 ms
+  请求体：
+    glm  model=glm-4-flash stream_options={"chunk_include_usage": true}
+    qwen model=qwen-plus   stream_options={"include_usage": true}
+
+真实 GLM（key 只放临时进程环境，未写盘、未打印）：
+  [provider] glm
+  [错误] 请求失败（HTTP 401） code=1000: 身份验证失败。
+  [耗时] 334 ms
+
+git grep -nE 'sk-[A-Za-z0-9_-]{16,}'            → 0 命中
+```

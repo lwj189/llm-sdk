@@ -81,6 +81,10 @@ std::string OpenAICompatProvider::apiKey() const {
     return std::string(value);
 }
 
+std::string OpenAICompatProvider::usageOptionKey() const {
+    return "include_usage";
+}
+
 bool OpenAICompatProvider::isAvailable(std::string* why) const {
     if (!apiKey().empty()) return true;
     if (why != nullptr) {
@@ -122,7 +126,7 @@ std::string OpenAICompatProvider::buildBody(const ChatRequest& req) const {
     body["stream"] = req.stream;
     if (req.stream) {
         // 只有流式请求才带这个字段，避免影响非流式响应。
-        body["stream_options"] = json{{"include_usage", true}};
+        body["stream_options"] = json{{usageOptionKey(), true}};
     }
     return body.dump();
 }

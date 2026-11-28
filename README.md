@@ -5,7 +5,30 @@ C++17 大模型接入 SDK（W1）。不用任何官方 SDK，只用 libcurl 自�
 
 ## 当前状态
 
-D4 代码与本地验收完成：`DeepSeekProvider`（`include/llm/deepseek.hpp`）+ OpenAI 兼容 provider（`include/llm/provider.hpp` / `src/providers/openai_compat.cpp`）已实现，`./build/llmchat "问题"` 可逐字流式输出，Ctrl-C 取消；`[DONE]` 早停、HTTP 错误体、非流式 `chat()` 都覆盖；D2 的 `--http-smoke*` 已按 D-01 删除。clean build 0 警告、`ctest` 1/1；本地 mock 的流式 / 非流式 / 401 / 取消全 PASS，真实 401 也已验。**真实 200 尚未验**：手上 key 已失效（401），拿到新 key 后补跑，D4 才算完整。D5 收口待做。
+D4 代码与本地验收完成，并把 OpenAI 兼容层扩展到 DeepSeek / GLM / 千问三家：
+include/llm/provider.hpp + deepseek.hpp / glm.hpp / qwen.hpp，
+src/providers/{openai_compat,deepseek,glm,qwen}.cpp。./build/llmchat 默认走 GLM，
+可用 --provider qwen|deepseek 切换，--model 覆盖模型；逐字流式、Ctrl-C 取消、
+[DONE] 早停、HTTP 错误体、非流式 chat() 都已覆盖。clean build 0 警告、ctest 1/1；
+本地 mock 下 GLM / 千问的流式与 usage 全 PASS。**真实 200 尚未验**：DeepSeek 与 GLM
+的 key 当前都返回 401（GLM 为「身份验证失败」），千问没有 key；拿到有效 key 后补跑，
+D4 才算完整。D5 收口待做。
+
+## 用法
+
+    # 默认 GLM；key 只从环境变量读取，不会写盘或打印
+    GLM_API_KEY=... ./build/llmchat "用三句话解释 epoll"
+
+    # 千问 / DeepSeek
+    DASHSCOPE_API_KEY=... ./build/llmchat --provider qwen "你好"
+    DEEPSEEK_API_KEY=... ./build/llmchat --provider deepseek "你好"
+
+    # 换模型；查看全部参数
+    ./build/llmchat --provider qwen --model qwen-plus "你好"
+    ./build/llmchat --help
+
+GLM 也接受 ZHIPUAI_API_KEY，千问也接受 QWEN_API_KEY 作为回退。调试时可设置
+GLM_BASE_URL / QWEN_BASE_URL 覆盖端点（默认值见 provider 头文件）。
 
 ## 文档
 

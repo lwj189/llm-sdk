@@ -1,20 +1,26 @@
-// D4 流式 CLI：把 DeepSeek 的 SSE 增量逐字打到 stdout，Ctrl-C 走 CancelToken。
+// D4 流式 CLI：把 OpenAI 兼容 provider 的 SSE 增量逐字打到 stdout，
+// Ctrl-C 走 CancelToken。默认接 GLM，可用 --provider 切换。
 //
 // 用法：
-//   ./build/llmchat "用三句话解释 epoll"
-//   DEEPSEEK_API_KEY=... ./build/llmchat "写长一点"   # 运行中按 Ctrl-C 取消
+//   GLM_API_KEY=... ./build/llmchat "用三句话解释 epoll"
+//   ./build/llmchat --provider qwen --model qwen-plus "你好"
+//   ./build/llmchat --provider deepseek "写长一点"
 //
-// key 只从环境变量 DEEPSEEK_API_KEY 读取，不写进代码，也不会打印。
+// key 只从环境变量读取，不写进代码，也不会打印。
 
 #include <chrono>
 #include <csignal>
 #include <cstddef>
 #include <cstdio>
+#include <memory>
 #include <string>
 
 #include "llm/cancel.hpp"
 #include "llm/deepseek.hpp"
+#include "llm/glm.hpp"
 #include "llm/http_client.hpp"
+#include "llm/provider.hpp"
+#include "llm/qwen.hpp"
 
 namespace {
 
@@ -32,52 +38,98 @@ long long now_ms() {
 
 void usage() {
     std::printf(
-        "llmchat —— DeepSeek 流式聊天\n"
+        "llmchat —— OpenAI 兼容的流式聊天\n"
         "\n"
         "用法:\n"
-        "  ./build/llmchat \"你的问题\"\n"
+        "  ./build/llmchat [--provider glm|qwen|deepseek] [--model 模型名] \"你的问题\"\n"
         "\n"
-        "环境变量:\n"
-        "  DEEPSEEK_API_KEY=<key>  必填；只从环境变量读取，不会写盘或打印\n"
+        "provider 默认 glm；key 只从环境变量读取，不会写盘或打印:\n"
+        "  glm       GLM_API_KEY（回退 ZHIPUAI_API_KEY）\n"
+        "  qwen      DASHSCOPE_API_KEY（回退 QWEN_API_KEY）\n"
+        "  deepseek  DEEPSEEK_API_KEY\n"
+        "\n"
+        "示例:\n"
+        "  GLM_API_KEY=... ./build/llmchat --provider glm \"用三句话解释 epoll\"\n"
+        "  DASHSCOPE_API_KEY=... ./build/llmchat --provider qwen \"你好\"\n"
         "\n"
         "运行中按 Ctrl-C 会取消当前请求，并在 1 秒内退出。\n");
 }
 
-std::string join_args(int argc, char** argv) {
-    std::string prompt;
-    for (int i = 1; i < argc; ++i) {
-        if (!prompt.empty()) prompt.push_back(' ');
-        prompt += argv[i];
-    }
-    return prompt;
+std::unique_ptr<llm::LLMProvider> make_provider(const std::string& name) {
+    if (name == "glm") return std::make_unique<llm::GlmProvider>();
+    if (name == "qwen") return std::make_unique<llm::QwenProvider>();
+    if (name == "deepseek") return std::make_unique<llm::DeepSeekProvider>();
+    return nullptr;
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
-    if (argc < 2) {
+    std::string provider_name = "glm";
+    std::string model;
+    std::string prompt;
+    bool help = false;
+
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "-h" || arg == "--help") {
+            help = true;
+            break;
+        }
+        if (arg == "--provider") {
+            if (i + 1 >= argc) {
+                std::fprintf(stderr, "[错误] --provider 缺少参数\n");
+                return 2;
+            }
+            provider_name = argv[++i];
+            continue;
+        }
+        if (arg == "--model") {
+            if (i + 1 >= argc) {
+                std::fprintf(stderr, "[错误] --model 缺少参数\n");
+                return 2;
+            }
+            model = argv[++i];
+            continue;
+        }
+        if (!arg.empty() && arg[0] == '-') {
+            std::fprintf(stderr, "[错误] 未知参数: %s\n", arg.c_str());
+            return 2;
+        }
+        if (!prompt.empty()) prompt.push_back(' ');
+        prompt += arg;
+    }
+
+    if (help) {
         usage();
         return 0;
     }
-
-    const std::string prompt = join_args(argc, argv);
     if (prompt.empty()) {
         usage();
         return 2;
     }
 
+    auto provider = make_provider(provider_name);
+    if (!provider) {
+        std::fprintf(stderr, "[错误] 未知 provider: %s（可选 glm / qwen / deepseek）\n",
+                     provider_name.c_str());
+        return 2;
+    }
+
     llm::HttpClient::globalInit();
 
-    llm::DeepSeekProvider provider;
     std::string why;
-    if (!provider.isAvailable(&why)) {
+    if (!provider->isAvailable(&why)) {
         std::fprintf(stderr, "[错误] %s\n", why.c_str());
-        std::fprintf(stderr, "提示：export DEEPSEEK_API_KEY=... 后重试。\n");
+        std::fprintf(stderr, "提示：按 --help 里的环境变量设置 key 后重试。\n");
         llm::HttpClient::globalCleanup();
         return 1;
     }
 
+    std::fprintf(stderr, "[provider] %s\n", provider->name().c_str());
+
     llm::ChatRequest request;
+    request.model = model;
     request.messages.push_back(llm::Message{llm::Role::User, prompt, {}, {}});
 
     llm::CancelToken cancel;
@@ -92,7 +144,7 @@ int main(int argc, char** argv) {
 
     const long long started = now_ms();
     llm::ProviderError error;
-    const bool ok = provider.chatStream(
+    const bool ok = provider->chatStream(
         request,
         [&](const llm::StreamChunk& chunk) {
             if (!chunk.reasoning.empty()) {

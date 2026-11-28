@@ -16,6 +16,8 @@ add_library(llmcore STATIC
     src/http_client.cpp
     src/providers/openai_compat.cpp
     src/providers/deepseek.cpp
+    src/providers/glm.cpp
+    src/providers/qwen.cpp
 )
 target_include_directories(llmcore PUBLIC include)
 target_link_libraries(llmcore PUBLIC CURL::libcurl)

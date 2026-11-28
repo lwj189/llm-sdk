@@ -52,6 +52,7 @@ protected:
     // 子类可覆盖下面几个钩子，模板方法本身保持 final。
     virtual std::string endpoint() const;       // 完整 URL
     virtual std::string apiKey() const;         // 从环境变量读；没有就空串
+    virtual std::string usageOptionKey() const; // 流式 usage 开关字段名
     virtual std::string buildBody(const ChatRequest& req) const;
     virtual bool parseChunk(const SSEEvent& ev, StreamChunk* out,
                             ProviderError* err) const;
